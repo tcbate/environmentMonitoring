@@ -70,11 +70,35 @@ void getCalibration(int fd){
 	calibrationData.dig_h2 = (cal2[1] << 8) | cal2[0];
 	calibrationData.dig_h3 = cal2[2];
 	calibrationData.dig_h4 = (cal2[3] << 4) | (cal2[4] & 0xf);
-	calibrationData.dig_h5 = (cal2[4]>>4) | (cal2[5] << 4);
-	calibrationData.dig_h6 = cal2[6];
+	calibrationData.dig_h5 = ((cal2[4] & 0xf0) >>4) | (cal2[5] << 4);
+	calibrationData.dig_h6 = (int8_t)cal2[6];
 }
 	
+float getHumidity(uint32_t adc_h){
+	int32_t v_x1_u32r;
+	int32_t dig_h4 = (int32_t)calibrationData.dig_h4;
+	int32_t dig_h5 = (int32_t)calibrationData.dig_h5;
+	int32_t dig_h6 = (int32_t)calibrationData.dig_h6;
+	int32_t dig_h3 = (int32_t)calibrationData.dig_h3;
+	int32_t dig_h2 = (int32_t)calibrationData.dig_h2;
+	int32_t dig_h1 = (int32_t)calibrationData.dig_h1;
 
+	v_x1_u32r = (t_fine - ((int32_t)76800));
+	v_x1_u32r = (((((adc_h << 14) - ((dig_h4) << 20) - ((dig_h5) * v_x1_u32r))
+					+ ((int32_t)16384)) >> 15) * (((((((v_x1_u32r * dig_h6)) >> 10) *
+								(((v_x1_u32r * (dig_h3)) >> 11) +
+								 ((uint32_t) 32786))) >> 10) + ((uint32_t)2097152)) *
+					((dig_h2) + 8192) >> 14));
+	v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
+				(dig_h1)) >> 4));
+	v_x1_u32r = (v_x1_u32r  < 0 ? 0 : v_x1_u32r);
+	v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
+
+	return (float)(v_x1_u32r>>12)/1024.0f;
+
+
+
+}
 int initialize(){
 	char reg[2];
 	char msg[2]= "\n\n";
@@ -191,6 +215,9 @@ int main(){
 
 	float pressure = getPressure(pressureRaw);
 	printf("Acutal Pressure : %.2f\n",pressure);
+
+	float humidity = getHumidity(humidityRaw);
+	printf("Actual Humidity : %.2f\n",humidity);
 
 	printf("T_fine : %d \n",t_fine);
 
