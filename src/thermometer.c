@@ -132,8 +132,8 @@ float getTemperature(int32_t adc_T){
 	return T/100.0f;
 }
 
-uint32_t getPressure(int32_t adc_p) {
-	int32_t var1, var2, p;
+float getPressure(int32_t adc_p) {
+	int64_t var1, var2, p;
 	int64_t dig_p6 = (int64_t)calibrationData.dig_p6;
 	int64_t dig_p5 = (int64_t)calibrationData.dig_p5;
 	int64_t dig_p4 = (int64_t)calibrationData.dig_p4;
@@ -161,7 +161,7 @@ uint32_t getPressure(int32_t adc_p) {
 	var1 = ((dig_p9) * (p>>13) * (p>>13)) >> 25;
 	var2 = ((dig_p8) * p) >> 19;
 	p = ((p + var1 + var2) >> 8) + ((dig_p7)<<4);
-	return (uint32_t)(p);
+	return (float)(p/256.0f);
 }
 int main(){
 	int i2c_device = initialize();
@@ -189,8 +189,8 @@ int main(){
 	float temperature = getTemperature(tempRaw);
 	printf("Actual temperature : %.2f\n",temperature);
 
-	uint32_t pressure = getPressure(pressureRaw);
-	printf("Acutal Pressure : %d\n",pressure);
+	float pressure = getPressure(pressureRaw);
+	printf("Acutal Pressure : %.2f\n",pressure);
 
 	printf("T_fine : %d \n",t_fine);
 
