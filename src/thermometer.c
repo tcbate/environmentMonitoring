@@ -65,7 +65,11 @@ void getCalibration(int fd){
 	calibrationData.dig_p7 = (cal1[19]<< 8) | cal1[18];
 	calibrationData.dig_p8 = (cal1[21]<< 8) | cal1[20];
 	calibrationData.dig_p9 = (cal1[23]<< 8) | cal1[22];
-	calibrationData.dig_h1 = cal1[24];
+	// Read dig_H1 (single byte at 0xA1)
+	reg[0] = 0xA1;
+	write(fd, reg, 1);
+	read(fd, &(calibrationData.dig_h1), 1);
+//	calibrationData.dig_h1 = cal1[24];
 
 	calibrationData.dig_h2 = (cal2[1] << 8) | cal2[0];
 	calibrationData.dig_h3 = cal2[2];
@@ -84,11 +88,15 @@ float getHumidity(uint32_t adc_h){
 	int32_t dig_h1 = (int32_t)calibrationData.dig_h1;
 
 	v_x1_u32r = (t_fine - ((int32_t)76800));
+	v_x1_u32r = (((((adc_h << 14) - (((int32_t)dig_h4) << 20) - (((int32_t)dig_h5) * v_x1_u32r)) + ((int32_t)16384)) >> 15)
+    * (((((((v_x1_u32r * ((int32_t)dig_h6)) >> 10) * (((v_x1_u32r * ((int32_t)dig_h3)) >> 11) + ((int32_t)32768))) >> 10)
+    + ((int32_t)2097152)) * ((int32_t)dig_h2) + 8192) >> 14));
+	/*
 	v_x1_u32r = (((((adc_h << 14) - ((dig_h4) << 20) - ((dig_h5) * v_x1_u32r))
 					+ ((int32_t)16384)) >> 15) * (((((((v_x1_u32r * dig_h6)) >> 10) *
 								(((v_x1_u32r * (dig_h3)) >> 11) +
-								 ((uint32_t) 32786))) >> 10) + ((uint32_t)2097152)) *
-					((dig_h2) + 8192) >> 14));
+								 ((uint32_t) 32786))) >> 10) + ((uint32_t)2097152)) * ((dig_h2) + 8192) >> 14));
+								 */
 	v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
 				(dig_h1)) >> 4));
 	v_x1_u32r = (v_x1_u32r  < 0 ? 0 : v_x1_u32r);
@@ -196,7 +204,11 @@ int main(){
 	write(i2c_device, &reg, 1);
        	char data[8];
 	read(i2c_device, data, 8);
-
+	//debugging
+	printf("dig_h1: %u dig_h2: %d dig_h3: %u dig_h4: %d dig_h5: %d dig_h6: %d\n", 
+    calibrationData.dig_h1, calibrationData.dig_h2, calibrationData.dig_h3, 
+    calibrationData.dig_h4, calibrationData.dig_h5, calibrationData.dig_h6);
+	//end debugging
 	uint32_t pressureRaw= (data[0]<<12) | (data[1]<<4) | ((data[2] & 0xf0)>>4);
 
 	printf("Raw Pressure : 0x%x\n",pressureRaw);
