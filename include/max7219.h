@@ -25,4 +25,8 @@ void max7219_initialize();
  */
 void write_string(char *data);
 
+/**@brief Closes the file descriptor for the SPI device
+ */
+void max7219_cleanup();
+
 #endif

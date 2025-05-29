@@ -49,6 +49,7 @@ static bme280processedData processedData = {0};
 /**This function downloads the calibration data from the sensor
  * and places it in the struct bme280Calibration calibrationData
  */
+
 static void getCalibration(int fd){
 	char reg[1]; //declaration
 	reg[0] = 0x88;
@@ -265,6 +266,9 @@ void takeMeasurement(){
 	parseHumidity(humidityRaw);
 }
 
+void bme280_cleanup(){
+	close(i2c_device);
+}	
 	
 /*
 int main(){

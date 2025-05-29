@@ -87,3 +87,7 @@ void write_string(char *data){
 		
 
 }
+
+void max7219_cleanup(){
+	close(spi_device);
+}

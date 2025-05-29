@@ -4,14 +4,48 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <bme280.h>
+#include <signal.h>
+#include "bme280.h"
+#include "max7219.h"
+
+void cleanup(){
+	bme280_cleanup();
+	max7219_cleanup();
+}
+
+void handle_sigint(int signum){
+	(void)signum; //throw away the value
+	cleanup();
+	exit(0);
+    }	
 
 int main(){
-	int i2c_device = bme280_initialize();
-	takeMeasurement(i2c_device);
-	float temperature = getTemperatureC(); 
+	//Handle SIG INT
+	struct sigaction sa;
+	sa.sa_handler = handle_sigint;
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
 
-	printf("Current temperature is : %.1f C\n",temperature);
+	if (sigaction(SIGINT, &sa, NULL) == -1) {
+        	perror("sigaction");
+        	exit(EXIT_FAILURE);
+    	}
+
+	//initialize the sensor and display
+	bme280_initialize();
+	max7219_initialize();
+	write_string("        ");
+	while(1){
+		takeMeasurement();
+		float temperature = getTemperatureC();
+		float humidity = getHumidity();
+		printf("Current temperature is : %.0f C\n",temperature);
+
+		char buffer[9];
+		snprintf(buffer, 9, "%.0f    %.0f",temperature,humidity);
+		write_string(buffer);
+		sleep(10);
+	}
 
 	return 0;
 }

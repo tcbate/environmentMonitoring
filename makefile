@@ -1,7 +1,11 @@
 displayFiles = src/max7219.c
 displayTest = src/main_display.c
-thermometerFiles = src/thermometer.c
+thermometerFiles = src/bme280.c
+main = src/main.c
 output = main
+
+integrated: $(thermometerFiles) $(displayFiles) $(main)
+	gcc $(thermometerFiles) $(displayFiles) $(main) -I include
 
 thermometer: $(thermometerFiles) thermometerTest.c
 	gcc $(thermometerFile) thermometerTest.c -o thermometerTest -I include

@@ -32,6 +32,10 @@ float getHumidity();
  *
  * @param The file descriptor for the i2c device
  */
-void takeMeasurement(int i2c_device);
+void takeMeasurement();
+
+/**Closes all file descriptors for the bme280
+ */
+void bme280_cleanup();
 
 #endif
