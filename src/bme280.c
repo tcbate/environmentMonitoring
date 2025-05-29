@@ -10,13 +10,11 @@
 #include <unistd.h>
 #include <stdint.h>
 
-/**
- * Initialization of i2c device.
- * returns the file descriptor initialized to the proper address
- * @return i2c_device
- */
 int32_t t_fine; //global variable used by the calibration
 
+/** Struct which stores the calibration data used for calculating
+ *  the final, readable, environmental values
+ */
 typedef struct{
 	unsigned short dig_t1;
 	signed short   dig_t2;
@@ -38,8 +36,19 @@ typedef struct{
 	unsigned char dig_h6;
 } bme280Calibration;
 
-static bme280Calibration calibrationData = {0};
+static bme280Calibration calibrationData = {0}; //initialize the struct at 0
+						//
+typedef struct{
+	int32_t temperature;
+	uint32_t pressure;
+	int32_t humidity;
+} bme280processedData;
 
+static bme280processedData processedData = {0};
+
+/**This function downloads the calibration data from the sensor
+ * and places it in the struct bme280Calibration calibrationData
+ */
 void getCalibration(int fd){
 	char reg[1]; //declaration
 	reg[0] = 0x88;
@@ -77,8 +86,12 @@ void getCalibration(int fd){
 	calibrationData.dig_h5 = ((cal2[4] & 0xf0) >>4) | (cal2[5] << 4);
 	calibrationData.dig_h6 = (int8_t)cal2[6];
 }
-	
-float getHumidity(uint32_t adc_h){
+/**A function which converts the raw humidity data into a human
+ * readable form. 
+ * @param adc_h : the raw humidity data
+ * @return A human readable humidity data (in float for now)
+ */ 	
+void parseHumidity(uint32_t adc_h){
 	int32_t v_x1_u32r;
 	int32_t dig_h4 = (int32_t)calibrationData.dig_h4;
 	int32_t dig_h5 = (int32_t)calibrationData.dig_h5;
@@ -102,11 +115,16 @@ float getHumidity(uint32_t adc_h){
 	v_x1_u32r = (v_x1_u32r  < 0 ? 0 : v_x1_u32r);
 	v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
 
-	return (float)(v_x1_u32r>>12)/1024.0f;
-
-
-
+	processedData.humidity = (v_x1_u32r>>12);
 }
+/** Function which takes no input, and returns nothing. This function
+ *  is to set up and initialize the BME-280. It is currently initialized
+ *  in forced mode, with no oversampling. The forced mode will need to
+ *  be called each time a reading will be taken by writing to the
+ *  appropriate register with the settings. 
+ *
+ *  @return The file descriptor for the BME280
+ */
 int initialize(){
 	char reg[2];
 	char msg[2]= "\n\n";
@@ -149,8 +167,13 @@ int initialize(){
 	return i2c_device;
 	
 }
-
-float getTemperature(int32_t adc_T){
+/**This function converts the temperature from the raw sensor data into
+ * a more human readible form
+ *
+ * @param adc_T the raw temperature data
+ * @return Float a float representing the temperature in degrees celcius
+ */
+void parseTemperature(int32_t adc_T){
 	//returns temperature in degrees C. Output is with 0.01 precision 5125 = 51.25c
 	int32_t dig_t1 = (int32_t)calibrationData.dig_t1;
 	int32_t dig_t2 = (int32_t)calibrationData.dig_t2;
@@ -161,10 +184,16 @@ float getTemperature(int32_t adc_T){
 	var2 = (((((adc_T>>4) - (dig_t1)) * ((adc_T>>4) - (dig_t1))) >> 12) * (dig_t3)) >> 14;
 	t_fine = var1 + var2;
 	T = (t_fine * 5 + 128) >> 8;
-	return T/100.0f;
+	
+	processedData.temperature = T;
 }
 
-float getPressure(int32_t adc_p) {
+/**Accepts the raw pressure data from the sensor, and converts
+ * it into human readable form.
+ * @param adc_p The raw pressure data
+ * @return readable pressure data
+ */
+void parsePressure(int32_t adc_p) {
 	int64_t var1, var2, p;
 	int64_t dig_p6 = (int64_t)calibrationData.dig_p6;
 	int64_t dig_p5 = (int64_t)calibrationData.dig_p5;
@@ -186,49 +215,83 @@ float getPressure(int32_t adc_p) {
 	var1 = (((((int64_t)1)<<47) + var1)) * (dig_p1)>>33; 
 
 	if (var1 == 0){
-		return 0;
+		return;
 	}
 	p = 1048576-adc_p;
 	p = (((p<<31)-var2)*3125)/var1;
 	var1 = ((dig_p9) * (p>>13) * (p>>13)) >> 25;
 	var2 = ((dig_p8) * p) >> 19;
 	p = ((p + var1 + var2) >> 8) + ((dig_p7)<<4);
-	return (float)(p/256.0f);
+	processedData.pressure = (uint32_t)p;
 }
+
+/**This function converts the parsed form of the temperature into
+ * celsius
+ * @return The temperature in Celsius as a float
+ */
+float getTemperatureC(){
+	int32_t temperature = processedData.temperature;
+	return (float)temperature/100.0f;
+}
+
+float getPressureHPa(){
+	uint32_t pressure = processedData.pressure;
+	return (float)pressure/25600.0f; //256 to convert from raw to pa. 100 to convert to hPa
+}
+
+float getHumidity(){
+	uint32_t humidity = processedData.humidity;
+	return (float)humidity/1024.0f;
+}
+
+void takeMeasurement(int i2c_device){
+	//parameters needed to request a read
+	uint8_t mode = 1; //Forced mode 1 or 2. Sleep: 0, normal mode 3
+	uint8_t osrs_t = 1; //other setting available p.27 of bosch documentation
+	uint8_t osrs_p = 1; //see page 27
+	uint8_t osrs_h = 1; //goes into 0xf2
+
+	//set up and take the measurement
+	char reg[2];
+	reg[0] = 0xf4; //control register
+	reg[1] = (osrs_t << 5) | (osrs_p << 2) | mode;
+	write(i2c_device, reg, 2);
+	usleep(10000); // for now, wait for the measurement to happen 
+		       
+	//read the data 
+	reg[0] = 0xf7;
+	write(i2c_device, &reg, 1);
+       	char data[8];
+	read(i2c_device, data, 8);
+	
+	uint32_t pressureRaw = (data[0]<<12) | (data[1]<<4) | ((data[2] & 0xf0)>>4);
+
+	uint32_t tempRaw = (data[3]<<12) | (data[4]<<4) | ((data[5] & 0xf0)>>4);
+
+	uint32_t humidityRaw = (data[6] << 8) | (data[7]); 
+
+	parseTemperature(tempRaw);
+	parsePressure(pressureRaw);
+	parseHumidity(humidityRaw);
+}
+
+	
+
 int main(){
 	int i2c_device = initialize();
 	if(i2c_device < 0){
 		perror("i2c initialization failed");
 	}
-	char reg = 0xf7;
-	write(i2c_device, &reg, 1);
-       	char data[8];
-	read(i2c_device, data, 8);
-	//debugging
-	printf("dig_h1: %u dig_h2: %d dig_h3: %u dig_h4: %d dig_h5: %d dig_h6: %d\n", 
-    calibrationData.dig_h1, calibrationData.dig_h2, calibrationData.dig_h3, 
-    calibrationData.dig_h4, calibrationData.dig_h5, calibrationData.dig_h6);
-	//end debugging
-	uint32_t pressureRaw= (data[0]<<12) | (data[1]<<4) | ((data[2] & 0xf0)>>4);
-
-	printf("Raw Pressure : 0x%x\n",pressureRaw);
-
-	uint32_t tempRaw = (data[3]<<12) | (data[4]<<4) | ((data[5] & 0xf0)>>4);
-
-	printf("Raw Temperature : 0x%x \n", tempRaw);
 	
-
-	uint32_t humidityRaw = (data[6] << 8) | (data[7]);
-
-	printf("Raw Humidity : 0x%x \n",humidityRaw);
+	takeMeasurement(i2c_device);
 	
-	float temperature = getTemperature(tempRaw);
+	float temperature = getTemperatureC();
 	printf("Actual temperature : %.2f\n",temperature);
 
-	float pressure = getPressure(pressureRaw);
+	float pressure = getPressureHPa();
 	printf("Acutal Pressure : %.2f\n",pressure);
 
-	float humidity = getHumidity(humidityRaw);
+	float humidity = getHumidity();
 	printf("Actual Humidity : %.2f\n",humidity);
 
 	printf("T_fine : %d \n",t_fine);
