@@ -49,7 +49,7 @@ static bme280processedData processedData = {0};
 /**This function downloads the calibration data from the sensor
  * and places it in the struct bme280Calibration calibrationData
  */
-void getCalibration(int fd){
+static void getCalibration(int fd){
 	char reg[1]; //declaration
 	reg[0] = 0x88;
 	char cal1[25];
@@ -91,7 +91,7 @@ void getCalibration(int fd){
  * @param adc_h : the raw humidity data
  * @return A human readable humidity data (in float for now)
  */ 	
-void parseHumidity(uint32_t adc_h){
+static void parseHumidity(uint32_t adc_h){
 	int32_t v_x1_u32r;
 	int32_t dig_h4 = (int32_t)calibrationData.dig_h4;
 	int32_t dig_h5 = (int32_t)calibrationData.dig_h5;
@@ -173,7 +173,7 @@ int initialize(){
  * @param adc_T the raw temperature data
  * @return Float a float representing the temperature in degrees celcius
  */
-void parseTemperature(int32_t adc_T){
+static void parseTemperature(int32_t adc_T){
 	//returns temperature in degrees C. Output is with 0.01 precision 5125 = 51.25c
 	int32_t dig_t1 = (int32_t)calibrationData.dig_t1;
 	int32_t dig_t2 = (int32_t)calibrationData.dig_t2;
@@ -193,7 +193,7 @@ void parseTemperature(int32_t adc_T){
  * @param adc_p The raw pressure data
  * @return readable pressure data
  */
-void parsePressure(int32_t adc_p) {
+static void parsePressure(int32_t adc_p) {
 	int64_t var1, var2, p;
 	int64_t dig_p6 = (int64_t)calibrationData.dig_p6;
 	int64_t dig_p5 = (int64_t)calibrationData.dig_p5;
