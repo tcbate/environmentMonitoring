@@ -1,4 +1,4 @@
-displayFiles = src/display.c
+displayFiles = src/max7219.c
 displayTest = src/main_display.c
 thermometerFiles = src/thermometer.c
 output = main

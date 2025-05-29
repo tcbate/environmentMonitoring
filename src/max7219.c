@@ -9,7 +9,12 @@
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 
-static int spi_write(int fd, __u8 addr, __u8 data){
+static int spi_device = 0;
+/**@brief Handles the SPI commands to write to the registers
+ * This funciton will construct the SPI message and then 
+ * send it to the SPI device
+ */
+static int spi_write(int spi_device, __u8 addr, __u8 data){
 	//charger le tampon des données
 	__u16 send = ((__u16)data<< 8) | addr;
 
@@ -25,54 +30,57 @@ static int spi_write(int fd, __u8 addr, __u8 data){
 	mesg.pad = 0;
 
 	//envoie de la message
-	int result = ioctl(fd,SPI_IOC_MESSAGE(1),&mesg);
+	int result = ioctl(spi_device,SPI_IOC_MESSAGE(1),&mesg);
 	return result;
 }
 
-void max7219_initialize(int fd){
+void max7219_initialize(){
+	spi_device = open("/dev/spidev0.0", O_RDWR);
+	if(spi_device < 0){
+		printf("Failed to open SPI device");
+	}
 	//decode mode p7 of datasheet
-	spi_write(fd,0x09,0xff);
+	spi_write(spi_device,0x09,0xff);
 	//activate all digits
-	spi_write(fd,0x0b,0x07);
+	spi_write(spi_device,0x0b,0x07);
 	//display test off
-	spi_write(fd,0x0f,0x0);
+	spi_write(spi_device,0x0f,0x0);
 	//exit shutdown mode
-	spi_write(fd,0x0c,0x01);
+	spi_write(spi_device,0x0c,0x01);
 
-	//spi_write(fd,0xf,0x1);
 }
 
-static void write_digit(int fd, int digit, int number){
+static void write_digit(int digit, int number){
 	__u8 addr = (__u8)digit + 1;
 	__u8 data = (__u8)number;
 
-	spi_write(fd,addr,data);
+	spi_write(spi_device,addr,data);
 }
 
-void write_string(int fd, char *data){
+void write_string(char *data){
 	int len = 8;
 	int j = 7;
 	int i = 0;
 	int digitCount = 8;
 	while(i < len){
 		if(data[i] == ' '){
-			write_digit(fd, (__u8)len-i-1, 0xf);
+			write_digit((__u8)len-i-1, 0xf);
 		} else if (data[i] == 'p' || data[i] == 'P') {
-			write_digit(fd, (__u8)len-i-1,0xe);
+			write_digit((__u8)len-i-1,0xe);
 		} else if (data[i] == 'l' || data[i] == 'L'){
-			write_digit(fd, (__u8)len-i-1,0xd);
+			write_digit((__u8)len-i-1,0xd);
 		} else if (data[i] == 'h' || data[i] == 'H'){
-			write_digit(fd,(__u8)len-i-1,0xc);
+			write_digit((__u8)len-i-1,0xc);
 		} else if (data[i] == 'e' || data[i] == 'E'){
-			write_digit(fd,(__u8)len-i-1, 0xb);
+			write_digit((__u8)len-i-1, 0xb);
 		} else if (data[i] == '-'){
-			write_digit(fd,(__u8)len-i-1,0xa);
+			write_digit((__u8)len-i-1,0xa);
 		} else if (data[i] == 'x' || data[i] == 'X'){
 			//ne fait rien
 		}
 		else if (data[i] >= '0' && data[i] <='9'){
 			__u8 chiffre = (__u8)(data[i] - '0');
-			write_digit(fd, (__u8)len-i-1, chiffre);
+			write_digit((__u8)len-i-1, chiffre);
 		}
 		i++;
 	}

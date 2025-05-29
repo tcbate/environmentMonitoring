@@ -3,15 +3,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "display.h"
+#include "max7219.h"
 
 int main(){
-	int spi = open("/dev/spidev0.0", O_RDWR);
-	if(spi < 0){
-		printf("Failed to open SPI device");
-		exit(1);
-	}
-	initialize(spi);
+	max7219_initialize();
 	int result = 0;
 	/*result = spi_write(spi,0x0f,0x01);
 	if(result < 1){
@@ -28,6 +23,6 @@ int main(){
 	while(1){
 		char buffer[9];
 		read(STDIN_FILENO, buffer, 9);
-		write_string(spi,buffer);	
+		write_string(buffer);	
 	}
 }

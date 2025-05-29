@@ -7,9 +7,11 @@
 #include <bme280.h>
 
 int main(){
-	int i2c_device = initialize();
+	int i2c_device = bme280_initialize();
 	takeMeasurement(i2c_device);
 	float temperature = getTemperatureC(); 
+
+	printf("Current temperature is : %.1f C\n",temperature);
 
 	return 0;
 }

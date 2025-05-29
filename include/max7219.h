@@ -1,5 +1,7 @@
 //display.h
 //Header file which contains the write files
+#ifndef MAX7219_H
+#define MAX7219_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -13,7 +15,7 @@
  * @param fd The file descriptor for the device
  *static 
  */
-void max7219_initialize(int fd);
+void max7219_initialize();
 
 /**@brief Function which writes a string to the screen
  * Takes a string as input and writes it to the 
@@ -21,4 +23,6 @@ void max7219_initialize(int fd);
  * @param fd The file descriptor for the device
  * @param data The string being written to
  */
-void write_string(int fd, char *data);
+void write_string(char *data);
+
+#endif
