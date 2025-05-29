@@ -9,7 +9,7 @@
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 
-int spi_write(int fd, __u8 addr, __u8 data){
+static int spi_write(int fd, __u8 addr, __u8 data){
 	//charger le tampon des données
 	__u16 send = ((__u16)data<< 8) | addr;
 
@@ -29,7 +29,7 @@ int spi_write(int fd, __u8 addr, __u8 data){
 	return result;
 }
 
-void initialize(int fd){
+void max7219_initialize(int fd){
 	//decode mode p7 of datasheet
 	spi_write(fd,0x09,0xff);
 	//activate all digits
@@ -42,7 +42,7 @@ void initialize(int fd){
 	//spi_write(fd,0xf,0x1);
 }
 
-void write_digit(int fd, int digit, int number){
+static void write_digit(int fd, int digit, int number){
 	__u8 addr = (__u8)digit + 1;
 	__u8 data = (__u8)number;
 

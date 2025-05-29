@@ -8,7 +8,7 @@
  * descriptor
  * @return int File descriptor for the I2C device
  */
-int initialize();
+int bme280_initialize();
 
 /**Converts the processed temperature into celsius
  * as a float

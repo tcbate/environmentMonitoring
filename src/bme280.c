@@ -10,8 +10,8 @@
 #include <unistd.h>
 #include <stdint.h>
 
-int32_t t_fine; //global variable used by the calibration
-
+static int32_t t_fine; //global variable used by the calibration
+static int i2c_device = -1;
 /** Struct which stores the calibration data used for calculating
  *  the final, readable, environmental values
  */
@@ -125,27 +125,19 @@ static void parseHumidity(uint32_t adc_h){
  *
  *  @return The file descriptor for the BME280
  */
-int initialize(){
+void bme280_initialize(){
 	char reg[2];
 	char msg[2]= "\n\n";
 
-	int i2c_device = open("/dev/i2c-1", O_RDWR);
+	i2c_device = open("/dev/i2c-1", O_RDWR);
 	if(i2c_device < 0){
 		perror("Failed to open i2c");
-		return i2c_device;
 	}
 	int status = ioctl(i2c_device, I2C_SLAVE,0x76);
 	if(status < 0){
 		perror("I2C address set failed");
-		return -1;
 	}
 
-	// for now: 
-	reg[0] = 0xd0;
-	write(i2c_device, reg, 1);
-	read(i2c_device, msg, 1);
-	printf("Device ID : %x \n",msg[0]);
-	
 	getCalibration(i2c_device);
 	//set mode
 	uint8_t mode = 1; //Forced mode 1 or 2. Sleep: 0, normal mode 3
@@ -163,8 +155,6 @@ int initialize(){
 	reg[1] = (osrs_t << 5) | (osrs_p << 2) | mode;
 	write(i2c_device, reg, 2);
 	usleep(10000); // for now, wait for the measurement to happen
-
-	return i2c_device;
 	
 }
 /**This function converts the temperature from the raw sensor data into
@@ -244,7 +234,7 @@ float getHumidity(){
 	return (float)humidity/1024.0f;
 }
 
-void takeMeasurement(int i2c_device){
+void takeMeasurement(){
 	//parameters needed to request a read
 	uint8_t mode = 1; //Forced mode 1 or 2. Sleep: 0, normal mode 3
 	uint8_t osrs_t = 1; //other setting available p.27 of bosch documentation
@@ -276,7 +266,7 @@ void takeMeasurement(int i2c_device){
 }
 
 	
-
+/*
 int main(){
 	int i2c_device = initialize();
 	if(i2c_device < 0){
@@ -297,7 +287,7 @@ int main(){
 	printf("T_fine : %d \n",t_fine);
 
 }
-	
+	*/
 
 
 	
