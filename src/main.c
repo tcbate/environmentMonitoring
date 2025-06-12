@@ -39,10 +39,10 @@ int main(){
 		takeMeasurement();
 		float temperature = getTemperatureC();
 		float humidity = getHumidity();
-		printf("Current temperature is : %.0f C\n",temperature);
+		//printf("Current temperature is : %.0f C\n",temperature);
 
-		char buffer[9];
-		snprintf(buffer, 9, "%.0f    %.0f",temperature,humidity);
+		char buffer[11];
+		snprintf(buffer, 11, "%.1f  %.1f",temperature,humidity);
 		write_string(buffer);
 		sleep(10);
 	}
