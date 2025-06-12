@@ -9,6 +9,20 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <stdint.h>
+//macro definitions for device registers
+#define ID 0xD0 //contains 0x60 for device id (BME280) 
+#define RESET 0xe0 //resets if 0xB6 is written to register
+#define CTRL_HUM 0xf2 //for oversampling of humidity p.28 of the datasheet
+#define CONFIG 0xf5 //sets options p.30. Writes may be ignored if not in sleep mode
+#define STATUS 0xF3 //contains device status
+#define CTRL_MEAS 0xf4 //sets pressure and temperature settings. p.29 of datasheet
+		       //et this after ctrl_hum
+#define PRESS 0xf7 //pressure registers starting from 0xf7-0xf9 p.31
+#define TEMP 0xfa // temperature register (from 0xfa - 0xfc) p.31
+#define HUM 0xfd // humidity register (from 0xfd - 0xfe)
+
+#define CALIB 0x88 //from 0x88-0xa1. p.27 and p.24
+#define CALIB2 0xe1 //from 0xe1 - 0xf0 p.24 and 27
 
 static int32_t t_fine; //global variable used by the calibration
 static int i2c_device = -1;
@@ -51,13 +65,13 @@ static bme280processedData processedData = {0};
  */
 
 static void getCalibration(int fd){
-	char reg[1]; //declaration
-	reg[0] = 0x88;
-	char cal1[25];
-	write(fd,reg,1);
-	read(fd,cal1,25);
+	char reg[1]; //declaration pour le registre
+	reg[0] = CALIB; 
+	char cal1[25]; //buffer pour lire les résultats
+	write(fd,reg,1); //demande de l'information
+	read(fd,cal1,25); //retourner l'information
 
-	reg[0] = 0xe1;
+	reg[0] = CALIB2; //work around to get 
 	char cal2[7];
 	write(fd,reg,1);
 	read(fd,cal2,7);
@@ -76,7 +90,7 @@ static void getCalibration(int fd){
 	calibrationData.dig_p8 = (cal1[21]<< 8) | cal1[20];
 	calibrationData.dig_p9 = (cal1[23]<< 8) | cal1[22];
 	// Read dig_H1 (single byte at 0xA1)
-	reg[0] = 0xA1;
+	reg[0] = 0xA1; //Doing it this way as it didn't seem to work reading it the normal way
 	write(fd, reg, 1);
 	read(fd, &(calibrationData.dig_h1), 1);
 //	calibrationData.dig_h1 = cal1[24];
@@ -88,7 +102,8 @@ static void getCalibration(int fd){
 	calibrationData.dig_h6 = (int8_t)cal2[6];
 }
 /**A function which converts the raw humidity data into a human
- * readable form. 
+ * readable form.
+ * This code is found on page 25-26 of the datasheet
  * @param adc_h : the raw humidity data
  * @return A human readable humidity data (in float for now)
  */ 	
@@ -105,12 +120,6 @@ static void parseHumidity(uint32_t adc_h){
 	v_x1_u32r = (((((adc_h << 14) - (((int32_t)dig_h4) << 20) - (((int32_t)dig_h5) * v_x1_u32r)) + ((int32_t)16384)) >> 15)
     * (((((((v_x1_u32r * ((int32_t)dig_h6)) >> 10) * (((v_x1_u32r * ((int32_t)dig_h3)) >> 11) + ((int32_t)32768))) >> 10)
     + ((int32_t)2097152)) * ((int32_t)dig_h2) + 8192) >> 14));
-	/*
-	v_x1_u32r = (((((adc_h << 14) - ((dig_h4) << 20) - ((dig_h5) * v_x1_u32r))
-					+ ((int32_t)16384)) >> 15) * (((((((v_x1_u32r * dig_h6)) >> 10) *
-								(((v_x1_u32r * (dig_h3)) >> 11) +
-								 ((uint32_t) 32786))) >> 10) + ((uint32_t)2097152)) * ((dig_h2) + 8192) >> 14));
-								 */
 	v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
 				(dig_h1)) >> 4));
 	v_x1_u32r = (v_x1_u32r  < 0 ? 0 : v_x1_u32r);
@@ -147,22 +156,22 @@ void bme280_initialize(){
 	uint8_t osrs_h = 1; //goes into 0xf2
 	
 	//set humidity
-	reg[0] = 0xf2;
-	reg[1] = 0x01;
+	reg[0] = CTRL_HUM;
+	reg[1] = 0x01; //write 01 to register. P.28 shows 0x01 = oversampling x 1
 	write(i2c_device,reg,2);
 	//set the rest of the parameters 
 	//
-	reg[0] = 0xf4; //control register
+	reg[0] = CTRL_MEAS; //control register
 	reg[1] = (osrs_t << 5) | (osrs_p << 2) | mode;
 	write(i2c_device, reg, 2);
-	usleep(10000); // for now, wait for the measurement to happen
+	usleep(10000); // wait 10ms for the measurement to complete
 	
 }
 /**This function converts the temperature from the raw sensor data into
- * a more human readible form
+ * a more human readible form. This is stored in the processed data struct.
+ * The basis for this is on p.25
  *
  * @param adc_T the raw temperature data
- * @return Float a float representing the temperature in degrees celcius
  */
 static void parseTemperature(int32_t adc_T){
 	//returns temperature in degrees C. Output is with 0.01 precision 5125 = 51.25c
@@ -180,9 +189,10 @@ static void parseTemperature(int32_t adc_T){
 }
 
 /**Accepts the raw pressure data from the sensor, and converts
- * it into human readable form.
+ * it into human readable form. The processed data is stored
+ * in the processed data struct.
+ * The basis for this formula is on p.25
  * @param adc_p The raw pressure data
- * @return readable pressure data
  */
 static void parsePressure(int32_t adc_p) {
 	int64_t var1, var2, p;
@@ -244,17 +254,18 @@ void takeMeasurement(){
 
 	//set up and take the measurement
 	char reg[2];
-	reg[0] = 0xf4; //control register
+	reg[0] = CTRL_MEAS; //control register
 	reg[1] = (osrs_t << 5) | (osrs_p << 2) | mode;
 	write(i2c_device, reg, 2);
 	usleep(10000); // for now, wait for the measurement to happen 
 		       
 	//read the data 
-	reg[0] = 0xf7;
+	reg[0] = PRESS; //burst read starting with the pressure register
 	write(i2c_device, &reg, 1);
        	char data[8];
 	read(i2c_device, data, 8);
-	
+
+	//fill the variables based on p.31	
 	uint32_t pressureRaw = (data[0]<<12) | (data[1]<<4) | ((data[2] & 0xf0)>>4);
 
 	uint32_t tempRaw = (data[3]<<12) | (data[4]<<4) | ((data[5] & 0xf0)>>4);
