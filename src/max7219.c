@@ -58,8 +58,7 @@ static void write_digit(int digit, int number){
 }
 
 void write_string(char *data){
-	int len = 8;
-	int j = 7;
+	int len = 8; //length of the display
 	int i = 0;
 	int digitCount = 8;
 	while(i < len){
@@ -80,6 +79,11 @@ void write_string(char *data){
 		}
 		else if (data[i] >= '0' && data[i] <='9'){
 			__u8 chiffre = (__u8)(data[i] - '0');
+			if(data[i+1] != '\n' && data[i+1] == '.'){
+				chiffre = ((1<<7) | chiffre); //add a 1 in the most signifcant bit to trigger a decimal point
+				len += 1; //extend the length to account for the decimal point
+				i+= 1; //jump over the decimal point
+			}
 			write_digit((__u8)len-i-1, chiffre);
 		}
 		i++;
@@ -87,7 +91,10 @@ void write_string(char *data){
 		
 
 }
-
+/**@brief Cleanup function for before closing
+ * Function which closes and relases the resources
+ * used by the spi_device
+ */
 void max7219_cleanup(){
 	close(spi_device);
 }
