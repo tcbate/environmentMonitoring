@@ -21,8 +21,8 @@ int main(){
 	write_string(spi, data);
 */
 	while(1){
-		char buffer[9];
-		read(STDIN_FILENO, buffer, 9);
+		char buffer[17];
+		read(STDIN_FILENO, buffer, 16);
 		write_string(buffer);	
 	}
 }
