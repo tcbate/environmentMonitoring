@@ -2,10 +2,10 @@ displayFiles = src/max7219.c
 displayTest = src/main_display.c
 thermometerFiles = src/bme280.c
 main = src/main.c
-output = main
+output = environmentMonitor
 
-integrated: $(thermometerFiles) $(displayFiles) $(main)
-	gcc $(thermometerFiles) $(displayFiles) $(main) -I include
+integrated: $(thermometerFiles) $(displayFiles) $(main) 
+	gcc -g $(thermometerFiles) $(displayFiles) $(main) -I include -o $(output)
 
 thermometer: $(thermometerFiles) thermometerTest.c
 	gcc $(thermometerFile) thermometerTest.c -o thermometerTest -I include

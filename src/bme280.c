@@ -108,7 +108,7 @@ static int getCalibration(int fd){
 	    perror("Error requesting calibration 3");
 	    return -1;
 	}
-	if(read(fd, &(calibrationData.dig_h1), 1)){
+	if(read(fd, &(calibrationData.dig_h1), 1) < 0){
 	    perror("Error reading calibration 3");
 	    return -1;
 	}
