@@ -19,7 +19,7 @@ float getTemperatureC();
 /**Gets the pressure in HPa and returns it as a float
  * @return The pressure in hPa
  */
-float getPressureHPa();
+float PressureHPa();
 
 /**gets the parsed humidity from the sensor and 
  * converts it to a percentage
@@ -32,7 +32,7 @@ float getHumidity();
  *
  * @param The file descriptor for the i2c device
  */
-void takeMeasurement();
+int takeMeasurement();
 
 /**Closes all file descriptors for the bme280
  */

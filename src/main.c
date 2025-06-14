@@ -15,6 +15,7 @@ void cleanup(){
 
 void handle_sigint(int signum){
 	(void)signum; //throw away the value
+	write_string("        "); //clear the display
 	cleanup();
 	exit(0);
     }	
@@ -32,11 +33,19 @@ int main(){
     	}
 
 	//initialize the sensor and display
-	bme280_initialize();
+	if(bme280_initialize() < 0){
+	    perror("Initialization Error BME280");
+	    write_string("E00     ");
+	    return -1;
+	}
 	max7219_initialize();
 	write_string("        ");
 	while(1){
-		takeMeasurement();
+		if(takeMeasurement() < 0){
+		    perror("Measurement error");
+		    write_string("E01     ");
+		    return -1;
+		}
 		float temperature = getTemperatureC();
 		float humidity = getHumidity();
 		//printf("Current temperature is : %.0f C\n",temperature);
