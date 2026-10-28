@@ -198,6 +198,8 @@ int bme280_initialize(){
 	}
 	usleep(10000); // wait 10ms for the measurement to complete
 	
+	return 0;
+	
 }
 /**This function converts the temperature from the raw sensor data into
  * a more human readible form. This is stored in the processed data struct.

@@ -33,13 +33,14 @@ int main(){
     	}
 
 	//initialize the sensor and display
+	max7219_initialize();
+	write_string("        ");
+
 	if(bme280_initialize() < 0){
 	    perror("Initialization Error BME280");
 	    write_string("E00     ");
 	    return -1;
 	}
-	max7219_initialize();
-	write_string("        ");
 	while(1){
 		if(takeMeasurement() < 0){
 		    perror("Measurement error");
