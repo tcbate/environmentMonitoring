@@ -45,14 +45,15 @@ int main(){
 		if(takeMeasurement() < 0){
 		    perror("Measurement error");
 		    write_string("E01     ");
-		}
-		float temperature = getTemperatureC();
-		float humidity = getHumidity();
-		//printf("Current temperature is : %.0f C\n",temperature);
+		} else {
+		    float temperature = getTemperatureC();
+		    float humidity = getHumidity();
+		    //printf("Current temperature is : %.0f C\n",temperature);
 
-		char buffer[11];
-		snprintf(buffer, 11, "%.1f  %.1f",temperature,humidity);
-		write_string(buffer);
+		    char buffer[11];
+		    snprintf(buffer, 11, "%.1f  %.1f",temperature,humidity);
+		    write_string(buffer);
+        }
 		sleep(10);
 	}
 
