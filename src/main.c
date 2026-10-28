@@ -44,7 +44,6 @@ int main(){
 		if(takeMeasurement() < 0){
 		    perror("Measurement error");
 		    write_string("E01     ");
-		    return -1;
 		}
 		float temperature = getTemperatureC();
 		float humidity = getHumidity();
