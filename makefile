@@ -8,7 +8,7 @@ integrated: $(thermometerFiles) $(displayFiles) $(main)
 	gcc -g $(thermometerFiles) $(displayFiles) $(main) -I include -o $(output)
 
 thermometer: $(thermometerFiles) thermometerTest.c
-	gcc $(thermometerFile) thermometerTest.c -o thermometerTest -I include
+	gcc $(thermometerFiles) thermometerTest.c -o thermometerTest -I include
 
 display: $(displayFiles) $(displayTest)
 	gcc -g $(displayFiles) $(displayTest) -o displayTest -I include
