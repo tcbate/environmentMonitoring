@@ -54,13 +54,6 @@ typedef struct{
 
 static bme280Calibration calibrationData = {0}; //initialize the struct at 0
 						//
-typedef struct{
-	int32_t temperature;
-	uint32_t pressure;
-	int32_t humidity;
-} bme280processedData;
-
-static bme280processedData processedData = {0};
 
 /**This function downloads the calibration data from the sensor
  * and places it in the struct bme280Calibration calibrationData
@@ -128,7 +121,7 @@ static int getCalibration(int fd){
  * @param adc_h : the raw humidity data
  * @return A human readable humidity data (in float for now)
  */ 	
-static void parseHumidity(uint32_t adc_h){
+static int32_t parseHumidity(uint32_t adc_h){
 	int32_t v_x1_u32r;
 	int32_t dig_h4 = (int32_t)calibrationData.dig_h4;
 	int32_t dig_h5 = (int32_t)calibrationData.dig_h5;
@@ -146,7 +139,7 @@ static void parseHumidity(uint32_t adc_h){
 	v_x1_u32r = (v_x1_u32r  < 0 ? 0 : v_x1_u32r);
 	v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
 
-	processedData.humidity = (v_x1_u32r>>12);
+	return (v_x1_u32r>>12);
 }
 /** Function which takes no input, and returns nothing. This function
  *  is to set up and initialize the BME-280. It is currently initialized
@@ -207,7 +200,7 @@ int bme280_initialize(){
  *
  * @param adc_T the raw temperature data
  */
-static void parseTemperature(int32_t adc_T){
+static int32_t parseTemperature(int32_t adc_T){
 	//returns temperature in degrees C. Output is with 0.01 precision 5125 = 51.25c
 	int32_t dig_t1 = (int32_t)calibrationData.dig_t1;
 	int32_t dig_t2 = (int32_t)calibrationData.dig_t2;
@@ -219,7 +212,7 @@ static void parseTemperature(int32_t adc_T){
 	t_fine = var1 + var2;
 	T = (t_fine * 5 + 128) >> 8;
 	
-	processedData.temperature = T;
+	return T;
 }
 
 /**Accepts the raw pressure data from the sensor, and converts
@@ -228,7 +221,7 @@ static void parseTemperature(int32_t adc_T){
  * The basis for this formula is on p.25
  * @param adc_p The raw pressure data
  */
-static void parsePressure(int32_t adc_p) {
+static int32_t parsePressure(int32_t adc_p) {
 	int64_t var1, var2, p;
 	int64_t dig_p6 = (int64_t)calibrationData.dig_p6;
 	int64_t dig_p5 = (int64_t)calibrationData.dig_p5;
@@ -257,29 +250,30 @@ static void parsePressure(int32_t adc_p) {
 	var1 = ((dig_p9) * (p>>13) * (p>>13)) >> 25;
 	var2 = ((dig_p8) * p) >> 19;
 	p = ((p + var1 + var2) >> 8) + ((dig_p7)<<4);
-	processedData.pressure = (uint32_t)p;
+
+	return (uint32_t)p;
 }
 
 /**This function converts the parsed form of the temperature into
  * celsius
  * @return The temperature in Celsius as a float
  */
-float getTemperatureC(){
-	int32_t temperature = processedData.temperature;
+float getTemperatureC(MeasurementStruct *measurement){
+	int32_t temperature = measurement->temperature;
 	return (float)temperature/100.0f;
 }
 
-float getPressureHPa(){
-	uint32_t pressure = processedData.pressure;
+float getPressureHPa(MeasurementStruct *measurement){
+	uint32_t pressure = measurement->pressure;
 	return (float)pressure/25600.0f; //256 to convert from raw to pa. 100 to convert to hPa
 }
 
-float getHumidity(){
-	uint32_t humidity = processedData.humidity;
+float getHumidity(MeasurementStruct *measurement){
+	uint32_t humidity = measurement->humidity;
 	return (float)humidity/1024.0f;
 }
 
-int takeMeasurement(){
+int takeMeasurement(MeasurementStruct *measurement){
 	//parameters needed to request a read
 	uint8_t mode = 1; //Forced mode 1 or 2. Sleep: 0, normal mode 3
 	uint8_t osrs_t = 1; //other setting available p.27 of bosch documentation
@@ -315,9 +309,10 @@ int takeMeasurement(){
 
 	uint32_t humidityRaw = (data[6] << 8) | (data[7]); 
 
-	parseTemperature(tempRaw);
-	parsePressure(pressureRaw);
-	parseHumidity(humidityRaw);
+	measurement->temperature = parseTemperature(tempRaw);
+	measurement->pressure = parsePressure(pressureRaw);
+	measurement->humidity = parseHumidity(humidityRaw);
+    measurement->measurementNumber++;
 
 	return 0;
 }
